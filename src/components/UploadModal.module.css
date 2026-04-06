@@ -1,0 +1,116 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal {
+  background: rgba(15, 10, 25, 0.8);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 24px;
+  width: 90%;
+  max-width: 480px;
+  padding: 40px;
+  position: relative;
+  box-shadow: 0 32px 80px rgba(192, 132, 252, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  animation: scaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.closeBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: 32px;
+}
+
+.dropZone {
+  border: 2px dashed rgba(192, 132, 252, 0.4);
+  background: rgba(192, 132, 252, 0.05);
+  border-radius: 20px;
+  padding: 48px 24px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.dropZone:hover, .dropZone.dragging {
+  border-color: var(--color-primary);
+  background: rgba(192, 132, 252, 0.15);
+  transform: scale(1.02);
+}
+
+.uploadIcon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.dropText {
+  font-size: 1.1rem;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.dropText span {
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.footer {
+  margin-top: 24px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.targetCategory {
+  color: var(--color-accent);
+  text-transform: capitalize;
+  font-weight: 500;
+}
