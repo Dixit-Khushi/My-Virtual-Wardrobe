@@ -1,145 +1,79 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { useGLTF, useAnimations } from '@react-three/drei'
 import { useWardrobeStore } from '../store/wardrobeStore'
+import * as THREE from 'three'
 
-// Procedural mannequin avatar (no external GLB needed)
+// using a standard known placeholder Ready Player Me GLB
+const MODEL_URL = "https://models.readyplayer.me/64bfa15f0e72c63d7c3934d1.glb"
+
 export default function AvatarModel() {
   const groupRef = useRef()
   const { currentOutfit } = useWardrobeStore()
 
+  // Load the GLTF model
+  const { nodes, materials, scene, animations } = useGLTF(MODEL_URL)
+  
+  // Try to play animations if the GLB has any (like an idle A-pose)
+  const { actions } = useAnimations(animations, groupRef)
+  
   useFrame((state) => {
+    // Keep avatar facing slightly forward but slowly breathing
     if (groupRef.current) {
-      // Subtle breathing animation
       const t = state.clock.elapsedTime
-      groupRef.current.position.y = Math.sin(t * 0.7) * 0.008
-      groupRef.current.rotation.y = Math.sin(t * 0.3) * 0.04
+      groupRef.current.position.y = Math.sin(t * 1.5) * 0.005 + 0.02 // slight natural bob
     }
   })
 
-  const skinColor = '#f4c2a1'
-  const hairColor = '#b076d4'  // Purple tinted like reference image
+  // We find material meshes that represent clothing and override them.
+  // In a real Ready Player Me model, meshes might be named 'Wolf3D_Outfit_Top', 'Wolf3D_Outfit_Bottom', etc.
+  // We traverse the scene dynamically to apply colors.
+  
+  scene.traverse((child) => {
+    if (child.isMesh && child.material) {
+        // Enable shadows
+        child.castShadow = true
+        child.receiveShadow = true
 
-  const topColor = currentOutfit.top?.color || '#f87171'
-  const bottomColor = currentOutfit.bottom?.color || '#f87171'
+        const name = child.name.toLowerCase()
+        child.material.needsUpdate = true
+        
+        // Fabric-like finish
+        child.material.roughness = 0.8
+        child.material.metalness = 0.0
+
+        if (name.includes('top') || name.includes('shirt') || name.includes('jacket')) {
+           if (currentOutfit.top) {
+               child.material.color = new THREE.Color(currentOutfit.top.color)
+           }
+        }
+        else if (name.includes('bottom') || name.includes('pant') || name.includes('skirt')) {
+           if (currentOutfit.bottom) {
+               child.material.color = new THREE.Color(currentOutfit.bottom.color)
+           }
+        }
+        else if (name.includes('shoe') || name.includes('footwear')) {
+           if (currentOutfit.shoes) {
+               child.material.color = new THREE.Color(currentOutfit.shoes.color)
+           }
+        }
+    }
+  })
 
   return (
-    <group ref={groupRef} position={[0, -0.1, 0.3]} castShadow>
-
-      {/* Head */}
-      <mesh position={[0, 2.72, 0]} castShadow>
-        <sphereGeometry args={[0.18, 32, 32]} />
-        <meshStandardMaterial color={skinColor} roughness={0.6} />
-      </mesh>
-
-      {/* Hair */}
-      <mesh position={[0, 2.82, 0]}>
-        <sphereGeometry args={[0.185, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.6]} />
-        <meshStandardMaterial color={hairColor} roughness={0.8} />
-      </mesh>
-      {/* Long hair */}
-      <mesh position={[0, 2.6, -0.08]}>
-        <cylinderGeometry args={[0.14, 0.08, 0.4, 12]} />
-        <meshStandardMaterial color={hairColor} roughness={0.8} />
-      </mesh>
-
-      {/* Neck */}
-      <mesh position={[0, 2.5, 0]} castShadow>
-        <cylinderGeometry args={[0.06, 0.07, 0.18, 12]} />
-        <meshStandardMaterial color={skinColor} roughness={0.6} />
-      </mesh>
-
-      {/* Torso / Dress top */}
-      <mesh position={[0, 2.1, 0]} castShadow>
-        <cylinderGeometry args={[0.22, 0.2, 0.6, 16]} />
-        <meshStandardMaterial color={topColor} roughness={0.85} />
-      </mesh>
-
-      {/* Dress skirt */}
-      <mesh position={[0, 1.6, 0]} castShadow>
-        <cylinderGeometry args={[0.3, 0.42, 0.7, 20]} />
-        <meshStandardMaterial color={bottomColor} roughness={0.85} />
-      </mesh>
-
-      {/* Dress flare */}
-      <mesh position={[0, 1.28, 0]} castShadow>
-        <cylinderGeometry args={[0.42, 0.36, 0.2, 20]} />
-        <meshStandardMaterial color={bottomColor} roughness={0.85} />
-      </mesh>
-
-      {/* Left arm */}
-      <group position={[-0.28, 2.1, 0]} rotation={[0, 0, 0.2]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.055, 0.048, 0.52, 10]} />
-          <meshStandardMaterial color={topColor} roughness={0.85} />
-        </mesh>
-        {/* Forearm */}
-        <mesh position={[0, -0.34, 0]} castShadow>
-          <cylinderGeometry args={[0.048, 0.042, 0.38, 10]} />
-          <meshStandardMaterial color={skinColor} roughness={0.6} />
-        </mesh>
-        {/* Hand */}
-        <mesh position={[0, -0.56, 0]}>
-          <sphereGeometry args={[0.048, 8, 8]} />
-          <meshStandardMaterial color={skinColor} roughness={0.6} />
-        </mesh>
-      </group>
-
-      {/* Right arm */}
-      <group position={[0.28, 2.1, 0]} rotation={[0, 0, -0.2]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.055, 0.048, 0.52, 10]} />
-          <meshStandardMaterial color={topColor} roughness={0.85} />
-        </mesh>
-        <mesh position={[0, -0.34, 0]} castShadow>
-          <cylinderGeometry args={[0.048, 0.042, 0.38, 10]} />
-          <meshStandardMaterial color={skinColor} roughness={0.6} />
-        </mesh>
-        <mesh position={[0, -0.56, 0]}>
-          <sphereGeometry args={[0.048, 8, 8]} />
-          <meshStandardMaterial color={skinColor} roughness={0.6} />
-        </mesh>
-      </group>
-
-      {/* Left leg */}
-      <group position={[-0.12, 1.11, 0]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.07, 0.06, 0.55, 10]} />
-          <meshStandardMaterial color={skinColor} roughness={0.6} />
-        </mesh>
-        {/* Shoe */}
-        <mesh position={[0, -0.35, 0.04]}>
-          <boxGeometry args={[0.1, 0.07, 0.22]} />
-          <meshStandardMaterial
-            color={currentOutfit.shoes?.color || '#ffffff'}
-            roughness={0.6}
-          />
-        </mesh>
-      </group>
-
-      {/* Right leg */}
-      <group position={[0.12, 1.11, 0]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.07, 0.06, 0.55, 10]} />
-          <meshStandardMaterial color={skinColor} roughness={0.6} />
-        </mesh>
-        <mesh position={[0, -0.35, 0.04]}>
-          <boxGeometry args={[0.1, 0.07, 0.22]} />
-          <meshStandardMaterial
-            color={currentOutfit.shoes?.color || '#ffffff'}
-            roughness={0.6}
-          />
-        </mesh>
-      </group>
-
-      {/* Current outfit label (floating) */}
+    <group ref={groupRef} position={[0, -0.85, 0.3]} dispose={null}>
+      {/* We scale the RPM model slightly because they are usually ~1.8 units tall */}
+      <primitive object={scene} scale={0.95} position={[0, 0, 0]} />
+      
+      {/* Current outfit label (floating) in case we still want a minimalist UI here */}
       {currentOutfit.top && (
-        <group position={[-0.8, 2.4, 0.3]}>
-          <mesh>
-            <planeGeometry args={[0.7, 0.22]} />
-            <meshStandardMaterial color="#120f1e" transparent opacity={0.9} />
-          </mesh>
+        <group position={[-0.8, 2.0, 0.3]}>
+           {/* removed the black box from old procedural model */}
         </group>
       )}
     </group>
   )
 }
+
+// Pre-fetch the model for performance
+useGLTF.preload(MODEL_URL)
