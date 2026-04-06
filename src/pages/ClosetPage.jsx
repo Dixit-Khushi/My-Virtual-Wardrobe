@@ -7,6 +7,7 @@ import gsap from 'gsap'
 import ClosetRoom from '../scenes/ClosetRoom'
 import AvatarModel from '../scenes/AvatarModel'
 import ClothingRack from '../scenes/ClothingRack'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 
 import TopBar from '../components/TopBar'
 import CategoryTabs from '../components/CategoryTabs'
@@ -17,7 +18,7 @@ import UploadModal from '../components/UploadModal'
 
 import styles from './ClosetPage.module.css'
 
-// Handles smooth camera movements based on selected category
+// Produces a wide master shot like the reference image
 function CameraRig({ controlsRef }) {
   const { activeCategory } = useWardrobeStore()
   const { camera } = useThree()
@@ -25,46 +26,39 @@ function CameraRig({ controlsRef }) {
   useEffect(() => {
     if (!controlsRef.current) return
 
-    // Default overview position for the avatar
-    let targetPos = { x: 0, y: 1.6, z: 4.5 }
-    let lookTarget = { x: 0, y: 1, z: 0 }
+    // Master wide shot matching reference precisely
+    let targetPos = { x: 0, y: 1.5, z: 5.5 }
+    let lookTarget = { x: 0, y: 1.2, z: 0 }
 
-    // Map categories to shelf positions
-    // Left shelf handles Tops and Bottoms
     if (activeCategory === 'tops') {
-      targetPos = { x: -2.0, y: 1.8, z: 2.0 }
-      lookTarget = { x: -3.4, y: 1.5, z: -1.0 }
+      targetPos = { x: -0.5, y: 1.5, z: 5.0 }
+      lookTarget = { x: -1.0, y: 1.4, z: -1.0 }
     } else if (activeCategory === 'bottoms') {
-      targetPos = { x: -2.0, y: 1.0, z: 2.0 }
-      lookTarget = { x: -3.4, y: 0.5, z: -1.0 }
-    } 
-    // Right shelf handles Shoes and Accessories
-    else if (activeCategory === 'shoes') {
-      targetPos = { x: 2.0, y: 0.8, z: 2.0 }
-      lookTarget = { x: 3.4, y: 0.2, z: -1.0 }
+      targetPos = { x: -0.5, y: 1.2, z: 5.0 }
+      lookTarget = { x: -1.0, y: 0.8, z: -1.0 }
+    } else if (activeCategory === 'shoes') {
+      targetPos = { x: 0.5, y: 1.0, z: 5.0 }
+      lookTarget = { x: 1.0, y: 0.5, z: -1.0 }
     } else if (activeCategory === 'accessories') {
-      targetPos = { x: 2.0, y: 2.0, z: 2.0 }
-      lookTarget = { x: 3.4, y: 1.8, z: -1.0 }
+      targetPos = { x: 0.5, y: 1.8, z: 5.0 }
+      lookTarget = { x: 1.0, y: 1.6, z: -1.0 }
     }
 
-    // Tween the camera position
     gsap.to(camera.position, {
       x: targetPos.x,
       y: targetPos.y,
       z: targetPos.z,
-      duration: 1.2,
+      duration: 1.5,
       ease: 'power3.inOut'
     })
 
-    // Tween the OrbitControls target (where the camera looks)
     gsap.to(controlsRef.current.target, {
       x: lookTarget.x,
       y: lookTarget.y,
       z: lookTarget.z,
-      duration: 1.2,
+      duration: 1.5,
       ease: 'power3.inOut'
     })
-
   }, [activeCategory, camera, controlsRef])
 
   return null
@@ -79,17 +73,24 @@ export default function ClosetPage() {
       {/* 3D Canvas */}
       <Canvas
         className={styles.canvas}
-        camera={{ position: [0, 1.6, 4.5], fov: 50 }}
+        camera={{ position: [0, 1.5, 5.5], fov: 45 }}
         shadows
-        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, toneMappingExposure: 1.2 }}
       >
         <color attach="background" args={['#0d0a18']} />
 
         <Suspense fallback={null}>
-          {/* Scene geometry */}
-          <ClosetRoom />
-          <AvatarModel />
-          <ClothingRack />
+          <ErrorBoundary>
+            <ClosetRoom />
+          </ErrorBoundary>
+
+          <ErrorBoundary>
+            <AvatarModel />
+          </ErrorBoundary>
+
+          <ErrorBoundary>
+            <ClothingRack />
+          </ErrorBoundary>
         </Suspense>
 
         <OrbitControls
@@ -102,11 +103,9 @@ export default function ClosetPage() {
           target={[0, 1, 0]}
         />
         
-        {/* The Camera Animation Rig */}
         <CameraRig controlsRef={controlsRef} />
       </Canvas>
 
-      {/* HTML UI Overlay */}
       <div className={styles.uiLayer}>
         <TopBar />
         <CategoryTabs />

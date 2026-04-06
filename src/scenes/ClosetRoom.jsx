@@ -1,71 +1,102 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { MeshReflectorMaterial, useEnvironment, Environment } from '@react-three/drei'
+import { MeshReflectorMaterial, Environment } from '@react-three/drei'
 import ClothingCard from './ClothingCard'
 import { useWardrobeStore } from '../store/wardrobeStore'
 import * as THREE from 'three'
 
-// Warm, realistic high-fidelity textures & colors
-const WOOD_COLOR = '#d4b58e' // Warm shelf wood
-const WOOD_DARK = '#b68c5b'  // Darker backpanel
-const SHELF_COLOR = '#e6cda3' // Lighter shelf top
-const FLOOR_COLOR = '#dcd7d4' // Warm concrete/marble base color
+// Clean, high-fidelity colors mimicking warm wooden textures without risky external fetch errors
+const WOOD_DARK = '#bda080'  // Shelf sides and edges
+const WOOD_LIGHT = '#d2b694' // Shelf tops and faces 
 
-function ShelfUnit({ position, side = 1, items }) {
-  // side: 1 = right, -1 = left
+function ShelfUnit({ position, side = 1, renderCards = false, items = [] }) {
   const shelves = [-0.3, 0.5, 1.3, 2.1]
+
+  // Pre-generate stacks of clothes for shelves to match the visual density of the reference image
+  const clothesStacks = useMemo(() => {
+    const stacks = []
+    shelves.forEach((sy) => {
+       const colors = ['#fca5a5', '#93c5fd', '#fcd34d', '#4ade80', '#c084fc', '#fb923c', '#e2e8f0', '#334155']
+       // 3 stacks per shelf
+       for (let cx = -0.7; cx <= 0.7; cx += 0.7) {
+          const numFolds = Math.floor(Math.random() * 4) + 3
+          const stack = []
+          for (let i = 0; i < numFolds; i++) {
+             stack.push({
+               y: i * 0.08 + 0.04,
+               color: colors[Math.floor(Math.random() * colors.length)]
+             })
+          }
+          stacks.push({ pbY: sy, x: cx, folds: stack })
+       }
+    })
+    return stacks
+  }, [])
 
   return (
     <group position={position}>
       {/* Back panel */}
       <mesh position={[0, 1.2, -0.12]} castShadow receiveShadow>
         <boxGeometry args={[2.2, 4.2, 0.06]} />
-        <meshStandardMaterial color={WOOD_DARK} roughness={0.7} metalness={0.1} />
+        <meshStandardMaterial color={WOOD_DARK} roughness={0.9} />
       </mesh>
       {/* Side panels */}
       <mesh position={[-1.08, 1.2, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.06, 4.2, 0.6]} />
-        <meshStandardMaterial color={WOOD_COLOR} roughness={0.6} />
+        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
       </mesh>
       <mesh position={[1.08, 1.2, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.06, 4.2, 0.6]} />
-        <meshStandardMaterial color={WOOD_COLOR} roughness={0.6} />
+        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
       </mesh>
-      {/* Top panel */}
+      {/* Top and Bottom */}
       <mesh position={[0, 3.22, 0]} castShadow receiveShadow>
         <boxGeometry args={[2.24, 0.06, 0.62]} />
-        <meshStandardMaterial color={WOOD_COLOR} roughness={0.6} />
+        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
       </mesh>
-      {/* Floor base */}
       <mesh position={[0, -0.85, 0]} castShadow receiveShadow>
         <boxGeometry args={[2.24, 0.06, 0.62]} />
-        <meshStandardMaterial color={WOOD_COLOR} roughness={0.6} />
+        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
       </mesh>
 
       {/* Horizontal shelves */}
       {shelves.map((y, i) => (
         <mesh key={i} position={[0, y, 0]} castShadow receiveShadow>
           <boxGeometry args={[2.24, 0.05, 0.62]} />
-          <meshStandardMaterial color={SHELF_COLOR} roughness={0.5} metalness={0.1} />
+          <meshStandardMaterial color={WOOD_LIGHT} roughness={0.6} />
         </mesh>
       ))}
 
-      {/* Clothing Cards sitting on shelves */}
-      {shelves.map((sy, si) => {
-        // Place 2 items per shelf
-        const shelfItems = items.slice(si * 2, si * 2 + 2)
-        return (
-          <group key={`shelf-${si}`}>
-            {shelfItems.map((item, ci) => {
-              // x pos: -0.5 and 0.5
-              const xPos = ci === 0 ? -0.5 : 0.5
-              // Calculate global position since card handles its own dragging
-              const globalPos = [position[0] + xPos, position[1] + sy + 0.35, position[2] + 0.05]
-              return <ClothingCard key={item.id} item={item} initialPosition={globalPos} />
-            })}
-          </group>
-        )
+      {/* Hovering Clothing Cards (Left side) */}
+      {renderCards && shelves.map((sy, si) => {
+        const item = items[si]
+        if (!item) return null
+        return <ClothingCard key={item.id} item={item} initialPosition={[position[0] + 0.5, position[1] + sy + 0.25, position[2] + 0.1]} />
       })}
+
+      {/* Physical 3D Clothes Stacks */}
+      {!renderCards && clothesStacks.map((stack, i) => (
+         <group key={`stack-${i}`} position={[stack.x, stack.pbY + 0.03, 0]}>
+            {stack.folds.map((fold, j) => (
+               <mesh key={`f-${j}`} position={[0, fold.y, 0]} castShadow>
+                 <boxGeometry args={[0.4, 0.07, 0.5]} />
+                 <meshStandardMaterial color={fold.color} roughness={0.9} />
+               </mesh>
+            ))}
+         </group>
+      ))}
+      
+      {/* Background physical clothes for active card shelf */}
+       {renderCards && clothesStacks.slice(0, 4).map((stack, i) => (
+         <group key={`bgstack-${i}`} position={[-0.6, stack.pbY + 0.03, -0.1]}>
+            {stack.folds.map((fold, j) => (
+               <mesh key={`f-${j}`} position={[0, fold.y, 0]} castShadow>
+                 <boxGeometry args={[0.3, 0.07, 0.35]} />
+                 <meshStandardMaterial color={fold.color} roughness={0.9} />
+               </mesh>
+            ))}
+         </group>
+      ))}
     </group>
   )
 }
@@ -74,18 +105,17 @@ function Floor() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.9, 0]} receiveShadow>
       <planeGeometry args={[20, 20]} />
-      {/* A concrete/marble-like reflector material */}
       <MeshReflectorMaterial
-        blur={[400, 400]}
+        blur={[300, 300]}
         resolution={1024}
-        mixBlur={1}
-        mixStrength={20}
-        roughness={0.3}     // lower roughness for marble look
-        depthScale={1.2}
-        minDepthThreshold={0.4}
-        maxDepthThreshold={1.4}
-        color={FLOOR_COLOR}
-        metalness={0.1}
+        mixBlur={1.2}
+        mixStrength={8}
+        roughness={0.25}     // slightly more matte to match reference
+        depthScale={1}
+        minDepthThreshold={0.8}
+        maxDepthThreshold={1.2}
+        color="#c8bcb5"     // warmer concrete color matching the image floor perfectly
+        metalness={0.2}
         mirror={0.6}
       />
     </mesh>
@@ -95,15 +125,10 @@ function Floor() {
 function Platform() {
   return (
     <group position={[0, -0.88, 0.3]}>
-      {/* Main platform disc - Marble like */}
+      {/* Main podium - Matches reference's white glossy slab */}
       <mesh receiveShadow castShadow>
-        <cylinderGeometry args={[0.9, 1.0, 0.08, 64]} />
-        <meshStandardMaterial color="#ffffff" metalness={0.1} roughness={0.2} />
-      </mesh>
-      {/* Soft warm glow around the base */}
-      <mesh position={[0, -0.02, 0]}>
-        <cylinderGeometry args={[1.05, 1.1, 0.01, 64]} />
-        <meshBasicMaterial color="#fcd34d" transparent opacity={0.6} />
+        <boxGeometry args={[1.5, 0.08, 1.2]} />
+        <meshStandardMaterial color="#ffffff" metalness={0.1} roughness={0.1} />
       </mesh>
     </group>
   )
@@ -112,24 +137,41 @@ function Platform() {
 function BackWall() {
   return (
     <group position={[0, 1.5, -3.5]}>
-      {/* Back wall base - Warm plaster/beige */}
+      {/* Plaster back wall reflecting the iridescent neon colors naturally */}
       <mesh receiveShadow>
-        <planeGeometry args={[10, 7]} />
-        <meshStandardMaterial
-          color="#dcd7d4"
-          roughness={0.9}
-        />
+        <planeGeometry args={[12, 8]} />
+        <meshStandardMaterial color="#eae3df" roughness={0.8} metalness={0.1} />
       </mesh>
 
-      {/* Neon geometric shapes (Mockup styled) */}
-      <group position={[0, -0.5, 0]}>
-        {/* Triangle */}
-        <NeonShape pos={[-1.8, 1.2, 0.01]} rot={[0, 0, 0.2]} color={'#ff7eb3'} shape="triangle" size={1.2} />
-        {/* Circle */}
-        <NeonShape pos={[-0.8, -0.2, 0.01]} rot={[0, 0, 0]} color={'#2dd4bf'} shape="circle" size={0.6} />
-        {/* Squiggles/Lines */}
-        <NeonShape pos={[1.5, 1.4, 0.01]} rot={[0, 0, -0.5]} color={'#fcd34d'} shape="line" size={1.8} thickness={0.06} />
-        <NeonShape pos={[2.2, -0.2, 0.01]} rot={[0, 0, 0.4]} color={'#a855f7'} shape="line" size={1.5} thickness={0.05} />
+      {/* Iridescent Ambient Gradient (soft behind neon) */}
+      <mesh position={[0, 0, 0.005]}>
+         <planeGeometry args={[7, 5]} />
+         <meshStandardMaterial 
+            color="#ffffff" 
+            emissive="#ffffff"
+            emissiveIntensity={0.5} 
+            transparent 
+            opacity={0.3} 
+            roughness={0.3}
+            metalness={0.8}
+         />
+      </mesh>
+
+      {/* Neon geometric shapes accurately matched to reference image */}
+      <group position={[0, -0.2, 0.02]}>
+        {/* Left Triangle */}
+        <NeonShape pos={[-2.4, 0.8, 0]} rot={[0, 0, 0.3]} color={'#ff9ced'} shape="triangle" size={1.0} thickness={0.04} />
+        {/* Behind Avatar Circle */}
+        <NeonShape pos={[-0.4, 0.2, -0.01]} rot={[0, 0, 0]} color={'#6bfbb2'} shape="circle" size={0.7} thickness={0.04} />
+        {/* Right angled line */}
+        <NeonShape pos={[2.0, 1.0, 0]} rot={[0, 0, -0.6]} color={'#ffe873'} shape="line" size={1.8} thickness={0.04} />
+        {/* Right bottom angle */}
+        <NeonShape pos={[2.4, -0.5, 0]} rot={[0, 0, 0.5]} color={'#e294ff'} shape="line" size={1.4} thickness={0.04} />
+        {/* Abstract squiggle */}
+        <mesh position={[2.0, -0.8, 0]}>
+           <torusGeometry args={[0.2, 0.04, 16, 32, Math.PI]} />
+           <meshStandardMaterial color="#ffbd88" emissive="#ffbd88" emissiveIntensity={2.5} toneMapped={false} />
+        </mesh>
       </group>
     </group>
   )
@@ -140,7 +182,7 @@ function NeonShape({ pos, rot, color, shape, size, thickness = 0.05 }) {
   // gentle pulsing
   useFrame((state) => {
     if (ref.current) {
-      ref.current.material.emissiveIntensity = 2.0 + Math.sin(state.clock.elapsedTime * 2) * 0.5
+      ref.current.material.emissiveIntensity = 2.5 + Math.sin(state.clock.elapsedTime * 2) * 0.3
     }
   })
 
@@ -150,7 +192,6 @@ function NeonShape({ pos, rot, color, shape, size, thickness = 0.05 }) {
   } else if (shape === 'circle') {
     geometry = <torusGeometry args={[size, thickness, 16, 64]} />
   } else {
-    // line
     geometry = <cylinderGeometry args={[thickness, thickness, size, 16]} />
   }
 
@@ -160,8 +201,7 @@ function NeonShape({ pos, rot, color, shape, size, thickness = 0.05 }) {
       <meshStandardMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={2}
-        toneMapped={false}
+        emissiveIntensity={1.0} // lower intensity preserves the vibrant neon colors
       />
     </mesh>
   )
@@ -170,34 +210,27 @@ function NeonShape({ pos, rot, color, shape, size, thickness = 0.05 }) {
 export default function ClosetRoom() {
   const { items } = useWardrobeStore()
   
-  // We extract items to place on the shelves
-  // Left shelf -> Tops + Bottoms
-  const leftShelfItems = [...items.tops, ...items.bottoms]
-  // Right shelf -> Shoes + Accs
-  const rightShelfItems = [...items.shoes, ...items.accessories]
+  const leftShelfItems = [...items.tops, ...items.bottoms, ...items.shoes, ...items.accessories]
 
   return (
     <group>
-      {/* Global Illumination HDRI - gives realistic lighting/reflections to everything */}
-      <Environment preset="apartment" background={false} blur={0.8} />
+       <Environment preset="apartment" background={false} blur={0.8} />
 
-      <BackWall />
-      <Floor />
-      <Platform />
+       <BackWall />
+       <Floor />
+       <Platform />
 
-      {/* Shelving units with items */}
-      <ShelfUnit position={[-3.4, 0.9, -1.0]} side={-1} items={leftShelfItems} />
-      <ShelfUnit position={[3.4, 0.9, -1.0]} side={1} items={rightShelfItems} />
+       <ShelfUnit position={[-4.2, 0.9, -1.0]} side={-1} renderCards={true} items={leftShelfItems} />
+       <ShelfUnit position={[4.2, 0.9, -1.0]} side={1} renderCards={false} />
 
-      {/* Side walls for reflection occlusion */}
-      <mesh position={[-5, 1.5, -1]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
-        <planeGeometry args={[8, 6]} />
-        <meshStandardMaterial color="#dcd7d4" roughness={1} />
-      </mesh>
-      <mesh position={[5, 1.5, -1]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
-        <planeGeometry args={[8, 6]} />
-        <meshStandardMaterial color="#dcd7d4" roughness={1} />
-      </mesh>
+       <mesh position={[-6, 1.5, -2]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+         <planeGeometry args={[10, 8]} />
+         <meshStandardMaterial color="#eae3df" roughness={1} />
+       </mesh>
+       <mesh position={[6, 1.5, -2]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+         <planeGeometry args={[10, 8]} />
+         <meshStandardMaterial color="#eae3df" roughness={1} />
+       </mesh>
     </group>
   )
 }
