@@ -1,15 +1,13 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { MeshReflectorMaterial, Environment } from '@react-three/drei'
+import { Environment, RoundedBox, useTexture } from '@react-three/drei'
 import ClothingCard from './ClothingCard'
 import { useWardrobeStore } from '../store/wardrobeStore'
 import * as THREE from 'three'
 
-// Clean, high-fidelity colors mimicking warm wooden textures without risky external fetch errors
-const WOOD_DARK = '#bda080'  // Shelf sides and edges
-const WOOD_LIGHT = '#d2b694' // Shelf tops and faces 
-
 function ShelfUnit({ position, side = 1, renderCards = false, items = [] }) {
+  const woodTexture = useTexture('/textures/wood.png')
+  const fabricTexture = useTexture('/textures/fabric.png')
   const shelves = [-0.3, 0.5, 1.3, 2.1]
 
   // Pre-generate stacks of clothes for shelves to match the visual density of the reference image
@@ -38,32 +36,32 @@ function ShelfUnit({ position, side = 1, renderCards = false, items = [] }) {
       {/* Back panel */}
       <mesh position={[0, 1.2, -0.12]} castShadow receiveShadow>
         <boxGeometry args={[2.2, 4.2, 0.06]} />
-        <meshStandardMaterial color={WOOD_DARK} roughness={0.9} />
+        <meshStandardMaterial map={woodTexture} roughness={0.9} />
       </mesh>
       {/* Side panels */}
       <mesh position={[-1.08, 1.2, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.06, 4.2, 0.6]} />
-        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
+        <meshStandardMaterial map={woodTexture} roughness={0.8} />
       </mesh>
       <mesh position={[1.08, 1.2, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.06, 4.2, 0.6]} />
-        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
+        <meshStandardMaterial map={woodTexture} roughness={0.8} />
       </mesh>
       {/* Top and Bottom */}
       <mesh position={[0, 3.22, 0]} castShadow receiveShadow>
         <boxGeometry args={[2.24, 0.06, 0.62]} />
-        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
+        <meshStandardMaterial map={woodTexture} roughness={0.8} />
       </mesh>
       <mesh position={[0, -0.85, 0]} castShadow receiveShadow>
         <boxGeometry args={[2.24, 0.06, 0.62]} />
-        <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
+        <meshStandardMaterial map={woodTexture} roughness={0.8} />
       </mesh>
 
       {/* Horizontal shelves */}
       {shelves.map((y, i) => (
         <mesh key={i} position={[0, y, 0]} castShadow receiveShadow>
           <boxGeometry args={[2.24, 0.05, 0.62]} />
-          <meshStandardMaterial color={WOOD_LIGHT} roughness={0.6} />
+          <meshStandardMaterial map={woodTexture} roughness={0.6} />
         </mesh>
       ))}
 
@@ -78,10 +76,9 @@ function ShelfUnit({ position, side = 1, renderCards = false, items = [] }) {
       {!renderCards && clothesStacks.map((stack, i) => (
          <group key={`stack-${i}`} position={[stack.x, stack.pbY + 0.03, 0]}>
             {stack.folds.map((fold, j) => (
-               <mesh key={`f-${j}`} position={[0, fold.y, 0]} castShadow>
-                 <boxGeometry args={[0.4, 0.07, 0.5]} />
-                 <meshStandardMaterial color={fold.color} roughness={0.9} />
-               </mesh>
+               <RoundedBox key={`f-${j}`} args={[0.38, 0.07, 0.48]} radius={0.02} smoothness={4} position={[0, fold.y, 0]} castShadow>
+                 <meshStandardMaterial map={fabricTexture} color={fold.color} roughness={0.9} />
+               </RoundedBox>
             ))}
          </group>
       ))}
@@ -90,10 +87,9 @@ function ShelfUnit({ position, side = 1, renderCards = false, items = [] }) {
        {renderCards && clothesStacks.slice(0, 4).map((stack, i) => (
          <group key={`bgstack-${i}`} position={[-0.6, stack.pbY + 0.03, -0.1]}>
             {stack.folds.map((fold, j) => (
-               <mesh key={`f-${j}`} position={[0, fold.y, 0]} castShadow>
-                 <boxGeometry args={[0.3, 0.07, 0.35]} />
-                 <meshStandardMaterial color={fold.color} roughness={0.9} />
-               </mesh>
+               <RoundedBox key={`f-${j}`} args={[0.25, 0.06, 0.3]} radius={0.02} smoothness={4} position={[0, fold.y, 0]} castShadow>
+                 <meshStandardMaterial map={fabricTexture} color={fold.color} roughness={0.9} />
+               </RoundedBox>
             ))}
          </group>
       ))}
@@ -105,18 +101,10 @@ function Floor() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.9, 0]} receiveShadow>
       <planeGeometry args={[20, 20]} />
-      <MeshReflectorMaterial
-        blur={[300, 300]}
-        resolution={1024}
-        mixBlur={1.2}
-        mixStrength={8}
-        roughness={0.25}     // slightly more matte to match reference
-        depthScale={1}
-        minDepthThreshold={0.8}
-        maxDepthThreshold={1.2}
-        color="#c8bcb5"     // warmer concrete color matching the image floor perfectly
-        metalness={0.2}
-        mirror={0.6}
+      <meshStandardMaterial 
+        color="#8B5A2B" 
+        roughness={0.9} 
+        metalness={0.1} 
       />
     </mesh>
   )
@@ -214,7 +202,7 @@ export default function ClosetRoom() {
 
   return (
     <group>
-       <Environment preset="apartment" background={false} blur={0.8} />
+       <Environment preset="studio" background blur={0.5} />
 
        <BackWall />
        <Floor />

@@ -6,7 +6,7 @@ import gsap from 'gsap'
 
 import ClosetRoom from '../scenes/ClosetRoom'
 import AvatarModel from '../scenes/AvatarModel'
-import ClothingRack from '../scenes/ClothingRack'
+import LeftShelvingUnit from '../scenes/LeftShelvingUnit'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 
 import TopBar from '../components/TopBar'
@@ -77,7 +77,16 @@ export default function ClosetPage() {
         shadows
         gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, toneMappingExposure: 1.2 }}
       >
-        <color attach="background" args={['#0d0a18']} />
+        <ambientLight intensity={0.4} />
+        <rectAreaLight
+          width={4}
+          height={4}
+          intensity={3}
+          position={[0, 4, 1.5]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        />
+        <pointLight position={[3, 2, 2]} intensity={0.5} castShadow />
+        <pointLight position={[-3, 2, 2]} intensity={0.5} castShadow />
 
         <Suspense fallback={null}>
           <ErrorBoundary>
@@ -89,7 +98,7 @@ export default function ClosetPage() {
           </ErrorBoundary>
 
           <ErrorBoundary>
-            <ClothingRack />
+            <LeftShelvingUnit position={[-2.5, -0.9, 1.5]} rotation={[0, Math.PI / 4, 0]} />
           </ErrorBoundary>
         </Suspense>
 
